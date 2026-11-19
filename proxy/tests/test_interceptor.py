@@ -1,8 +1,9 @@
 import pytest
+
 from anysql_proxy.interceptor import (
-    detect_provider,
     build_forward_headers,
     calculate_cost,
+    detect_provider,
     parse_token_counts,
 )
 
@@ -20,8 +21,12 @@ def test_detect_provider_models_path():
 
 
 def test_build_forward_headers_strips_host():
-    headers = {"host": "localhost:4242", "content-type": "application/json",
-               "authorization": "Bearer anysql-proxy", "user-agent": "cursor/1.0"}
+    headers = {
+        "host": "localhost:4242",
+        "content-type": "application/json",
+        "authorization": "Bearer anysql-proxy",
+        "user-agent": "cursor/1.0",
+    }
     result = build_forward_headers(headers, api_key="sk-real-key", provider="openai")
     assert "host" not in result
     assert result["authorization"] == "Bearer sk-real-key"

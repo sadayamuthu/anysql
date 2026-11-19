@@ -9,6 +9,7 @@ Pulls developer context from prompt text:
   - Whether the prompt contains an error/stack trace
   - Git repo and branch (from filesystem, using file path)
 """
+
 import re
 import subprocess
 from pathlib import Path
@@ -16,19 +17,31 @@ from pathlib import Path
 # Ordered list of regex patterns to find the active file path in prompt text.
 # Each IDE embeds it differently; we try them in order and take the first match.
 _FILE_PATTERNS = [
-    r'Current file:\s*([^\n]+)',         # Cursor
-    r'Active document:\s*([^\n]+)',      # Continue
+    r"Current file:\s*([^\n]+)",  # Cursor
+    r"Active document:\s*([^\n]+)",  # Continue
     r'(?:file:|path:)\s*[`"]?([^\s`"\n]+\.\w+)',
-    r'(?:```\w+\n)?#\s*([^\s]+\.\w+)',  # comment with filename
+    r"(?:```\w+\n)?#\s*([^\s]+\.\w+)",  # comment with filename
 ]
 
 _EXTENSION_TO_LANGUAGE = {
-    ".py": "python",   ".ts": "typescript", ".tsx": "typescript",
-    ".js": "javascript", ".jsx": "javascript", ".rs": "rust",
-    ".go": "go",       ".rb": "ruby",       ".java": "java",
-    ".cpp": "cpp",     ".c": "c",           ".cs": "csharp",
-    ".sh": "bash",     ".sql": "sql",       ".md": "markdown",
-    ".kt": "kotlin",   ".swift": "swift",   ".php": "php",
+    ".py": "python",
+    ".ts": "typescript",
+    ".tsx": "typescript",
+    ".js": "javascript",
+    ".jsx": "javascript",
+    ".rs": "rust",
+    ".go": "go",
+    ".rb": "ruby",
+    ".java": "java",
+    ".cpp": "cpp",
+    ".c": "c",
+    ".cs": "csharp",
+    ".sh": "bash",
+    ".sql": "sql",
+    ".md": "markdown",
+    ".kt": "kotlin",
+    ".swift": "swift",
+    ".php": "php",
 }
 
 _ERROR_PATTERN = re.compile(
@@ -37,11 +50,11 @@ _ERROR_PATTERN = re.compile(
 )
 
 _REQUEST_TYPE_KEYWORDS = [
-    ("debug",    ["fix", "error", "bug", "traceback", "broken", "failing"]),
-    ("explain",  ["explain", "what does", "how does", "what is", "describe"]),
-    ("review",   ["review", "improve", "refactor", "optimize", "clean up"]),
+    ("debug", ["fix", "error", "bug", "traceback", "broken", "failing"]),
+    ("explain", ["explain", "what does", "how does", "what is", "describe"]),
+    ("review", ["review", "improve", "refactor", "optimize", "clean up"]),
     ("generate", ["write", "create", "implement", "generate", "build"]),
-    ("test",     ["test", "unit test", "pytest", "spec", "write tests"]),
+    ("test", ["test", "unit test", "pytest", "spec", "write tests"]),
 ]
 
 
@@ -67,10 +80,10 @@ def extract_context(body: dict, _ide: str) -> dict:
     lines = full_text.count("\n")
 
     return {
-        "file_path":         file_path,
-        "language":          language,
-        "request_type":      request_type,
-        "lines_of_context":  lines,
+        "file_path": file_path,
+        "language": language,
+        "request_type": request_type,
+        "lines_of_context": lines,
         "has_error_context": has_error,
     }
 
@@ -89,21 +102,23 @@ def get_git_context(file_path: str | None) -> dict:
             return {}
         repo_root = subprocess.check_output(
             ["git", "rev-parse", "--show-toplevel"],
-            cwd=search_dir, stderr=subprocess.DEVNULL, text=True
+            cwd=search_dir,
+            stderr=subprocess.DEVNULL,
+            text=True,
         ).strip()
         branch = subprocess.check_output(
-            ["git", "branch", "--show-current"],
-            cwd=repo_root, stderr=subprocess.DEVNULL, text=True
+            ["git", "branch", "--show-current"], cwd=repo_root, stderr=subprocess.DEVNULL, text=True
         ).strip()
         return {
-            "git_repo":   Path(repo_root).name,
+            "git_repo": Path(repo_root).name,
             "git_branch": branch or None,
         }
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return {}
 
 
 # --- private helpers ---
+
 
 def _collect_text_parts(body: dict) -> list[str]:
     parts = []

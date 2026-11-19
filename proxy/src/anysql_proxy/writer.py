@@ -5,13 +5,15 @@ The async request handler calls enqueue() which is non-blocking (< 1μs).
 A stdlib queue bridges the async event loop and the writer thread.
 The writer flushes every 50 rows or every 2 seconds, whichever comes first.
 """
+
 import logging
 import queue
 import threading
 import time
-import duckdb
 from datetime import datetime, timezone
 from pathlib import Path
+
+import duckdb
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS llm_responses (
@@ -93,7 +95,9 @@ class DBWriter:
         if self._thread:
             self._thread.join(timeout=10)
             if self._thread.is_alive():
-                logging.getLogger(__name__).warning("anysql-writer thread did not exit within timeout")
+                logging.getLogger(__name__).warning(
+                    "anysql-writer thread did not exit within timeout"
+                )
             self._thread = None
         if self._conn:
             self._conn.close()
@@ -133,8 +137,8 @@ class DBWriter:
             ):
                 try:
                     self._flush(batch)
-                except Exception as exc:
-                    logging.getLogger(__name__).error("DBWriter flush failed: %s", exc, exc_info=True)
+                except Exception:
+                    logging.getLogger(__name__).exception("DBWriter flush failed")
                     # drop batch and continue — data loss is preferable to silent death
                 batch = []
                 last_flush = time.monotonic()
@@ -148,39 +152,45 @@ class DBWriter:
         if batch:
             try:
                 self._flush(batch)
-            except Exception as exc:
-                logging.getLogger(__name__).error("DBWriter flush failed: %s", exc, exc_info=True)
+            except Exception:
+                logging.getLogger(__name__).exception("DBWriter flush failed")
 
     def _flush(self, batch: list) -> None:
         log.info("DBWriter._flush flushing %d record(s)", len(batch))
         now = datetime.now(timezone.utc)
         for response_record, context_record in batch:
             r = response_record
-            self._conn.execute(_INSERT_RESPONSE, [
-                r["response_id"],
-                r.get("model"),
-                r.get("prompt_tokens"),
-                r.get("completion_tokens"),
-                r.get("total_tokens"),
-                r.get("cost_usd"),
-                r.get("latency_ms"),
-                r.get("created_at", now),
-            ])
+            self._conn.execute(
+                _INSERT_RESPONSE,
+                [
+                    r["response_id"],
+                    r.get("model"),
+                    r.get("prompt_tokens"),
+                    r.get("completion_tokens"),
+                    r.get("total_tokens"),
+                    r.get("cost_usd"),
+                    r.get("latency_ms"),
+                    r.get("created_at", now),
+                ],
+            )
             c = context_record
-            self._conn.execute(_INSERT_CONTEXT, [
-                c["context_id"],
-                c.get("response_id"),
-                c.get("ide_name"),
-                c.get("request_type"),
-                c.get("file_path"),
-                c.get("language"),
-                c.get("git_repo"),
-                c.get("git_branch"),
-                c.get("lines_of_context"),
-                c.get("has_error_context"),
-                c.get("suggestion_length"),
-                c.get("created_at", now),
-            ])
+            self._conn.execute(
+                _INSERT_CONTEXT,
+                [
+                    c["context_id"],
+                    c.get("response_id"),
+                    c.get("ide_name"),
+                    c.get("request_type"),
+                    c.get("file_path"),
+                    c.get("language"),
+                    c.get("git_repo"),
+                    c.get("git_branch"),
+                    c.get("lines_of_context"),
+                    c.get("has_error_context"),
+                    c.get("suggestion_length"),
+                    c.get("created_at", now),
+                ],
+            )
         self._conn.commit()
         log.info("DBWriter._flush committed %d record(s) to %s", len(batch), self._db_path)
         # Export Parquet snapshots so DBeaver / other tools can read without
@@ -191,5 +201,5 @@ class DBWriter:
             self._conn.execute(f"COPY llm_responses TO '{rp}' (FORMAT PARQUET)")
             self._conn.execute(f"COPY ide_context TO '{cp}' (FORMAT PARQUET)")
             log.debug("Parquet snapshots written to %s", self._parquet_dir)
-        except Exception as exc:
+        except (duckdb.Error, OSError) as exc:
             log.warning("Parquet export failed (non-fatal): %s", exc)

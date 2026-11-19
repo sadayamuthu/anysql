@@ -8,9 +8,9 @@ Commands:
   anysql-proxy setup <ide>    — configure IDE to use proxy
   anysql-proxy keys set <provider> <key>  — store API key
 """
+
 import os
 import signal
-import sys
 from pathlib import Path
 
 import click
@@ -62,6 +62,7 @@ def status():
     """Check if the proxy is running."""
     import urllib.error
     import urllib.request
+
     try:
         urllib.request.urlopen("http://localhost:4242/v1/models", timeout=2)
         click.echo("anySQL Proxy  running  http://localhost:4242")

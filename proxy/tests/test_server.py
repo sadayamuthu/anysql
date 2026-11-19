@@ -1,19 +1,19 @@
 """
 Integration tests for server.py using pytest-asyncio + aiohttp TestClient/TestServer.
 """
+
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
 from aiohttp.test_utils import TestClient, TestServer
 
 from anysql_proxy.interceptor import UpstreamMeta
 from anysql_proxy.server import create_app
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_writer():
     """Return a MagicMock that satisfies DBWriter's interface."""
@@ -33,6 +33,7 @@ def make_app(writer=None, api_keys=None):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 async def test_get_models_returns_json_and_cors():
     """GET /v1/models returns a JSON model list with CORS headers."""

@@ -1,7 +1,9 @@
 import time
-import pytest
-import duckdb
 from datetime import datetime, timezone
+
+import duckdb
+import pytest
+
 from anysql_proxy.writer import DBWriter
 
 

@@ -4,6 +4,7 @@ Per-IDE configuration writers.
 Each function modifies the IDE's config file to point its LLM base URL
 to the anySQL proxy at http://localhost:4242.
 """
+
 import json
 import os
 from pathlib import Path
@@ -13,20 +14,23 @@ import click
 
 def setup_ide(ide: str) -> None:
     handlers = {
-        "cursor":      _setup_cursor,
+        "cursor": _setup_cursor,
         "claude-code": _setup_claude_code,
-        "windsurf":    _setup_windsurf,
-        "vscode":      _setup_vscode_continue,
-        "zed":         _setup_zed,
+        "windsurf": _setup_windsurf,
+        "vscode": _setup_vscode_continue,
+        "zed": _setup_zed,
     }
     handlers[ide]()
 
 
 def _setup_cursor() -> None:
     settings_path = Path.home() / ".cursor" / "settings.json"
-    _update_json(settings_path, {
-        "cursor.openAIApiBaseUrl": "http://localhost:4242",
-    })
+    _update_json(
+        settings_path,
+        {
+            "cursor.openAIApiBaseUrl": "http://localhost:4242",
+        },
+    )
     click.echo("Cursor configured. Restart Cursor to apply.")
     click.echo(f"Updated: {settings_path}")
 
@@ -46,9 +50,12 @@ def _setup_windsurf() -> None:
     settings_path = (
         Path.home() / "Library" / "Application Support" / "Windsurf" / "User" / "settings.json"
     )
-    _update_json(settings_path, {
-        "openai.apiBase": "http://localhost:4242",
-    })
+    _update_json(
+        settings_path,
+        {
+            "openai.apiBase": "http://localhost:4242",
+        },
+    )
     click.echo("Windsurf configured. Restart Windsurf to apply.")
     click.echo(f"Updated: {settings_path}")
 
@@ -68,13 +75,15 @@ def _setup_vscode_continue() -> None:
         config = {}
     config.setdefault("models", [])
     if not any(m.get("apiBase") == "http://localhost:4242" for m in config["models"]):
-        config["models"].append({
-            "title": "GPT-4o (via anySQL)",
-            "provider": "openai",
-            "model": "gpt-4o",
-            "apiBase": "http://localhost:4242",
-            "apiKey": "anysql-proxy",
-        })
+        config["models"].append(
+            {
+                "title": "GPT-4o (via anySQL)",
+                "provider": "openai",
+                "model": "gpt-4o",
+                "apiBase": "http://localhost:4242",
+                "apiKey": "anysql-proxy",
+            }
+        )
     config_path.write_text(json.dumps(config, indent=2))
     click.echo(f"Continue configured: {config_path}")
 

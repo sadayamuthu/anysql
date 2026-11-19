@@ -7,6 +7,7 @@ Routes:
   GET  /v1/models            — Model list (IDE verification requests)
   OPTIONS /*                 — CORS preflight (required for Cursor/Electron)
 """
+
 import asyncio
 import json
 import logging
@@ -23,29 +24,31 @@ from .detector import detect_ide
 from .extractor import extract_context, get_git_context
 from .interceptor import (
     UpstreamMeta,
+    calculate_cost,
     detect_provider,
     forward_and_stream,
-    parse_token_counts,
-    parse_openai_sse,
     inject_stream_options,
-    calculate_cost,
+    parse_openai_sse,
+    parse_token_counts,
 )
 from .writer import DBWriter
 
 _CORS_HEADERS = {
-    "Access-Control-Allow-Origin":  "*",
+    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Authorization, Content-Type, anthropic-version, x-api-key",
 }
 
-_MODELS_RESPONSE = json.dumps({
-    "object": "list",
-    "data": [
-        {"id": "gpt-4o",            "object": "model"},
-        {"id": "gpt-4o-mini",       "object": "model"},
-        {"id": "claude-sonnet-4-6", "object": "model"},
-    ],
-})
+_MODELS_RESPONSE = json.dumps(
+    {
+        "object": "list",
+        "data": [
+            {"id": "gpt-4o", "object": "model"},
+            {"id": "gpt-4o-mini", "object": "model"},
+            {"id": "claude-sonnet-4-6", "object": "model"},
+        ],
+    }
+)
 
 
 def create_app(writer: DBWriter, api_keys: dict) -> web.Application:
@@ -101,7 +104,7 @@ class RequestHandler:
         body_bytes = await request.read()
         try:
             body = json.loads(body_bytes)
-        except Exception:
+        except ValueError:
             body = {}
 
         headers = dict(request.headers)
@@ -137,21 +140,19 @@ class RequestHandler:
                 session=session,
             ):
                 if isinstance(item, UpstreamMeta):
-                    stream_response = web.StreamResponse(
-                        status=item.status, headers=_CORS_HEADERS
-                    )
+                    stream_response = web.StreamResponse(status=item.status, headers=_CORS_HEADERS)
                     stream_response.content_type = item.content_type
                     await stream_response.prepare(request)
                 else:
                     await stream_response.write(item)
                     chunks.append(item)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - any upstream failure is reported to the IDE
             if stream_response is None:
                 # prepare was never called; send a minimal error response
                 stream_response = web.StreamResponse(status=502, headers=_CORS_HEADERS)
                 stream_response.content_type = "text/plain"
                 await stream_response.prepare(request)
-            error_msg = f"data: {{\"error\": \"{type(exc).__name__}: {exc}\"}}\n\n"
+            error_msg = f'data: {{"error": "{type(exc).__name__}: {exc}"}}\n\n'
             await stream_response.write(error_msg.encode())
 
         if stream_response is None:
@@ -168,7 +169,7 @@ class RequestHandler:
         model_from_stream: str | None = None
         try:
             resp_json = json.loads(full_body)
-        except Exception:
+        except ValueError:
             resp_json = {}
 
         if not resp_json and provider == "openai":
@@ -186,32 +187,36 @@ class RequestHandler:
         # Non-blocking write to DuckDB
         log.info(
             "handle_llm enqueue provider=%s model=%s prompt_tokens=%d completion_tokens=%d latency_ms=%d",
-            provider, model, prompt_tokens, completion_tokens, latency_ms,
+            provider,
+            model,
+            prompt_tokens,
+            completion_tokens,
+            latency_ms,
         )
         self._writer.enqueue(
             response_record={
-                "response_id":       response_id,
-                "model":             model,
-                "prompt_tokens":     prompt_tokens,
+                "response_id": response_id,
+                "model": model,
+                "prompt_tokens": prompt_tokens,
                 "completion_tokens": completion_tokens,
-                "total_tokens":      prompt_tokens + completion_tokens,
-                "cost_usd":          cost_usd,
-                "latency_ms":        latency_ms,
-                "created_at":        now,
+                "total_tokens": prompt_tokens + completion_tokens,
+                "cost_usd": cost_usd,
+                "latency_ms": latency_ms,
+                "created_at": now,
             },
             context_record={
-                "context_id":        context_id,
-                "response_id":       response_id,
-                "ide_name":          ide,
-                "request_type":      ctx.get("request_type"),
-                "file_path":         ctx.get("file_path"),
-                "language":          ctx.get("language"),
-                "git_repo":          git_ctx.get("git_repo"),
-                "git_branch":        git_ctx.get("git_branch"),
-                "lines_of_context":  ctx.get("lines_of_context"),
+                "context_id": context_id,
+                "response_id": response_id,
+                "ide_name": ide,
+                "request_type": ctx.get("request_type"),
+                "file_path": ctx.get("file_path"),
+                "language": ctx.get("language"),
+                "git_repo": git_ctx.get("git_repo"),
+                "git_branch": git_ctx.get("git_branch"),
+                "lines_of_context": ctx.get("lines_of_context"),
                 "has_error_context": ctx.get("has_error_context"),
                 "suggestion_length": completion_tokens,
-                "created_at":        now,
+                "created_at": now,
             },
         )
 

@@ -1,44 +1,34 @@
 from anysql_proxy.extractor import extract_context, get_git_context
 
-
 # --- extract_context ---
 
+
 def test_extracts_file_path_from_cursor_pattern():
-    body = {
-        "messages": [{"role": "user", "content": "Current file: src/main.py\nfix this"}]
-    }
+    body = {"messages": [{"role": "user", "content": "Current file: src/main.py\nfix this"}]}
     ctx = extract_context(body, "cursor")
     assert ctx["file_path"] == "src/main.py"
 
 
 def test_extracts_language_from_extension():
-    body = {
-        "messages": [{"role": "user", "content": "Current file: app/server.ts\n"}]
-    }
+    body = {"messages": [{"role": "user", "content": "Current file: app/server.ts\n"}]}
     ctx = extract_context(body, "cursor")
     assert ctx["language"] == "typescript"
 
 
 def test_extracts_language_from_fenced_code_block():
-    body = {
-        "messages": [{"role": "user", "content": "```python\ndef foo(): pass\n```"}]
-    }
+    body = {"messages": [{"role": "user", "content": "```python\ndef foo(): pass\n```"}]}
     ctx = extract_context(body, "unknown")
     assert ctx["language"] == "python"
 
 
 def test_detects_error_context():
-    body = {
-        "messages": [{"role": "user", "content": "Traceback (most recent call last): ..."}]
-    }
+    body = {"messages": [{"role": "user", "content": "Traceback (most recent call last): ..."}]}
     ctx = extract_context(body, "cursor")
     assert ctx["has_error_context"] is True
 
 
 def test_no_error_context():
-    body = {
-        "messages": [{"role": "user", "content": "explain this function"}]
-    }
+    body = {"messages": [{"role": "user", "content": "explain this function"}]}
     ctx = extract_context(body, "cursor")
     assert ctx["has_error_context"] is False
 
@@ -86,6 +76,7 @@ def test_handles_empty_body():
 
 
 # --- get_git_context ---
+
 
 def test_get_git_context_returns_dict_for_none():
     result = get_git_context(None)

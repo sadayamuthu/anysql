@@ -9,8 +9,9 @@ The interceptor:
 
 Auth headers are never logged.
 """
+
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import AsyncIterator, Union
 
 import aiohttp
 
@@ -18,11 +19,13 @@ import aiohttp
 @dataclass
 class UpstreamMeta:
     """Upstream HTTP metadata yielded as the first item from forward_and_stream."""
+
     status: int
     content_type: str
 
+
 _PROVIDER_BASE_URLS = {
-    "openai":    "https://api.openai.com",
+    "openai": "https://api.openai.com",
     "anthropic": "https://api.anthropic.com",
 }
 
@@ -31,13 +34,13 @@ _PROVIDER_BASE_URLS = {
 # IMPORTANT: more-specific names must come before general prefixes (e.g.
 # "gpt-4o-mini" before "gpt-4o") because calculate_cost uses substring matching.
 _MODEL_COSTS: dict[str, tuple[float, float]] = {
-    "gpt-4o-mini":         (0.15,   0.60),   # must be before gpt-4o
-    "gpt-4o":              (5.00,  15.00),
-    "gpt-4-turbo":         (10.00, 30.00),
-    "gpt-3.5-turbo":       (0.50,   1.50),
-    "claude-opus-4-6":     (15.00, 75.00),
-    "claude-sonnet-4-6":   (3.00,  15.00),
-    "claude-haiku-4-5":    (0.25,   1.25),
+    "gpt-4o-mini": (0.15, 0.60),  # must be before gpt-4o
+    "gpt-4o": (5.00, 15.00),
+    "gpt-4-turbo": (10.00, 30.00),
+    "gpt-3.5-turbo": (0.50, 1.50),
+    "claude-opus-4-6": (15.00, 75.00),
+    "claude-sonnet-4-6": (3.00, 15.00),
+    "claude-haiku-4-5": (0.25, 1.25),
 }
 
 _HEADERS_TO_STRIP = {"host", "content-length", "transfer-encoding", "connection"}
@@ -62,7 +65,8 @@ def build_forward_headers(
     - Uses x-api-key for Anthropic, Authorization Bearer for OpenAI
     """
     forward = {
-        k: v for k, v in headers.items()
+        k: v
+        for k, v in headers.items()
         if k.lower() not in _HEADERS_TO_STRIP | {"authorization", "x-api-key"}
     }
     if provider == "anthropic":
@@ -94,7 +98,7 @@ async def forward_and_stream(
     provider: str,
     api_key: str,
     session: "aiohttp.ClientSession | None" = None,
-) -> AsyncIterator[Union[UpstreamMeta, bytes]]:
+) -> AsyncIterator[UpstreamMeta | bytes]:
     """
     Forward request to provider and yield response chunks as they arrive.
     This is an async generator — the caller iterates it to stream chunks
@@ -113,6 +117,7 @@ async def forward_and_stream(
     _own_session = session is None
     if _own_session:
         import aiohttp as _aiohttp
+
         session = _aiohttp.ClientSession()
 
     try:
@@ -151,6 +156,7 @@ def parse_openai_sse(full_body: bytes) -> tuple[dict, str | None]:
     is set in the request — see inject_stream_options().
     """
     import json as _json
+
     usage: dict = {}
     model: str | None = None
     for line in full_body.decode(errors="replace").splitlines():
@@ -165,8 +171,8 @@ def parse_openai_sse(full_body: bytes) -> tuple[dict, str | None]:
                 model = chunk["model"]
             if chunk.get("usage"):
                 usage = chunk["usage"]
-        except Exception:
-            pass
+        except (ValueError, AttributeError):
+            continue
     return usage, model
 
 
@@ -177,11 +183,12 @@ def inject_stream_options(body_bytes: bytes) -> bytes:
     Returns the (possibly modified) body bytes.
     """
     import json as _json
+
     try:
         body = _json.loads(body_bytes)
         if body.get("stream"):
             body.setdefault("stream_options", {})["include_usage"] = True
             return _json.dumps(body).encode()
-    except Exception:
+    except (ValueError, AttributeError, TypeError):
         pass
     return body_bytes

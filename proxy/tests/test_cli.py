@@ -1,4 +1,5 @@
 from click.testing import CliRunner
+
 from anysql_proxy.cli import main
 
 
@@ -15,6 +16,7 @@ def test_help():
 def test_stop_no_pid_file(tmp_path):
     """stop with no PID file prints helpful message."""
     from unittest.mock import patch
+
     runner = CliRunner()
     # Redirect Path.home() to tmp_path — no proxy.pid will exist there
     with patch("anysql_proxy.cli.Path.home", return_value=tmp_path):

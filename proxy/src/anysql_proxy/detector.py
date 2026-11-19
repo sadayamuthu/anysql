@@ -7,11 +7,11 @@ header. We match against known fingerprints to identify the caller.
 
 # Map IDE name → list of substrings to look for in User-Agent (lowercase)
 _FINGERPRINTS: dict[str, list[str]] = {
-    "cursor":          ["cursor/", "cursor-ide"],
-    "windsurf":        ["windsurf", "codeium", "antigravity"],
-    "claude_code":     ["claude-code", "anthropic-code"],
+    "cursor": ["cursor/", "cursor-ide"],
+    "windsurf": ["windsurf", "codeium", "antigravity"],
+    "claude_code": ["claude-code", "anthropic-code"],
     "vscode_continue": ["continue/", "continue-dev"],
-    "zed":             ["zed/"],
+    "zed": ["zed/"],
 }
 
 
