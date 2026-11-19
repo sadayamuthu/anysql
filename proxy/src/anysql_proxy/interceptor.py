@@ -1,0 +1,194 @@
+"""
+Request forwarding and streaming passthrough.
+
+The interceptor:
+  1. Detects which provider to forward to (OpenAI vs Anthropic)
+  2. Swaps the fake IDE API key for the real provider key
+  3. Streams the response back to the IDE chunk by chunk
+  4. Collects token counts + calculates cost for logging
+
+Auth headers are never logged.
+"""
+
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
+
+import aiohttp
+
+
+@dataclass
+class UpstreamMeta:
+    """Upstream HTTP metadata yielded as the first item from forward_and_stream."""
+
+    status: int
+    content_type: str
+
+
+_PROVIDER_BASE_URLS = {
+    "openai": "https://api.openai.com",
+    "anthropic": "https://api.anthropic.com",
+}
+
+# Cost per 1M tokens in USD (prompt, completion)
+# Update as provider pricing changes.
+# IMPORTANT: more-specific names must come before general prefixes (e.g.
+# "gpt-4o-mini" before "gpt-4o") because calculate_cost uses substring matching.
+_MODEL_COSTS: dict[str, tuple[float, float]] = {
+    "gpt-4o-mini": (0.15, 0.60),  # must be before gpt-4o
+    "gpt-4o": (5.00, 15.00),
+    "gpt-4-turbo": (10.00, 30.00),
+    "gpt-3.5-turbo": (0.50, 1.50),
+    "claude-opus-4-6": (15.00, 75.00),
+    "claude-sonnet-4-6": (3.00, 15.00),
+    "claude-haiku-4-5": (0.25, 1.25),
+}
+
+_HEADERS_TO_STRIP = {"host", "content-length", "transfer-encoding", "connection"}
+
+
+def detect_provider(path: str) -> str:
+    """Return 'anthropic' for /v1/messages, 'openai' for everything else."""
+    if path.startswith("/v1/messages"):
+        return "anthropic"
+    return "openai"
+
+
+def build_forward_headers(
+    headers: dict,
+    api_key: str,
+    provider: str,
+) -> dict:
+    """
+    Build headers for the upstream request.
+    - Strips hop-by-hop headers and host
+    - Substitutes the real API key (never logs it)
+    - Uses x-api-key for Anthropic, Authorization Bearer for OpenAI
+    """
+    forward = {
+        k: v
+        for k, v in headers.items()
+        if k.lower() not in _HEADERS_TO_STRIP | {"authorization", "x-api-key"}
+    }
+    if provider == "anthropic":
+        forward["x-api-key"] = api_key
+        forward.setdefault("anthropic-version", "2023-06-01")
+    else:
+        forward["authorization"] = f"Bearer {api_key}"
+    return forward
+
+
+def calculate_cost(model: str, prompt_tokens: int, completion_tokens: int) -> float:
+    """Return estimated cost in USD. Returns 0.0 for unknown models."""
+    # Normalize model name — strip date suffixes like -20251001
+    normalized = model.lower()
+    for known_model, (prompt_rate, completion_rate) in _MODEL_COSTS.items():
+        if known_model in normalized:
+            return (
+                prompt_tokens * prompt_rate / 1_000_000
+                + completion_tokens * completion_rate / 1_000_000
+            )
+    return 0.0
+
+
+async def forward_and_stream(
+    method: str,
+    path: str,
+    headers: dict,
+    body: bytes,
+    provider: str,
+    api_key: str,
+    session: "aiohttp.ClientSession | None" = None,
+) -> AsyncIterator[UpstreamMeta | bytes]:
+    """
+    Forward request to provider and yield response chunks as they arrive.
+    This is an async generator — the caller iterates it to stream chunks
+    back to the IDE while collecting the full response for logging.
+
+    Yields UpstreamMeta as the first item (status + content-type), then
+    bytes chunks for the response body.
+
+    If session is provided, it is used as-is and not closed after the request.
+    If session is None, a new ClientSession is created and closed when done.
+    """
+    base_url = _PROVIDER_BASE_URLS[provider]
+    url = f"{base_url}{path}"
+    forward_headers = build_forward_headers(headers, api_key=api_key, provider=provider)
+
+    _own_session = session is None
+    if _own_session:
+        import aiohttp as _aiohttp
+
+        session = _aiohttp.ClientSession()
+
+    try:
+        async with session.request(method, url, headers=forward_headers, data=body) as resp:
+            yield UpstreamMeta(
+                status=resp.status,
+                content_type=resp.headers.get("Content-Type", "application/octet-stream"),
+            )
+            async for chunk in resp.content.iter_any():
+                yield chunk
+    finally:
+        if _own_session:
+            await session.close()
+
+
+def parse_token_counts(body: dict, provider: str) -> tuple[int, int]:
+    """
+    Extract (prompt_tokens, completion_tokens) from a parsed response body.
+    Returns (0, 0) if not parseable.
+    """
+    if provider == "openai":
+        usage = body.get("usage", {})
+        return usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0)
+    elif provider == "anthropic":
+        usage = body.get("usage", {})
+        return usage.get("input_tokens", 0), usage.get("output_tokens", 0)
+    return 0, 0
+
+
+def parse_openai_sse(full_body: bytes) -> tuple[dict, str | None]:
+    """
+    Parse an OpenAI SSE stream (text/event-stream) and return
+    (usage_dict, model_name). usage_dict is empty if no usage chunk found.
+
+    OpenAI only sends usage in the stream when stream_options.include_usage=true
+    is set in the request — see inject_stream_options().
+    """
+    import json as _json
+
+    usage: dict = {}
+    model: str | None = None
+    for line in full_body.decode(errors="replace").splitlines():
+        if not line.startswith("data: "):
+            continue
+        data = line[6:].strip()
+        if data == "[DONE]":
+            continue
+        try:
+            chunk = _json.loads(data)
+            if not model and chunk.get("model"):
+                model = chunk["model"]
+            if chunk.get("usage"):
+                usage = chunk["usage"]
+        except (ValueError, AttributeError):
+            continue
+    return usage, model
+
+
+def inject_stream_options(body_bytes: bytes) -> bytes:
+    """
+    For OpenAI streaming requests, inject stream_options.include_usage=true
+    so that the final SSE chunk carries token counts.
+    Returns the (possibly modified) body bytes.
+    """
+    import json as _json
+
+    try:
+        body = _json.loads(body_bytes)
+        if body.get("stream"):
+            body.setdefault("stream_options", {})["include_usage"] = True
+            return _json.dumps(body).encode()
+    except (ValueError, AttributeError, TypeError):
+        pass
+    return body_bytes

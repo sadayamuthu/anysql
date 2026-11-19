@@ -249,6 +249,24 @@ rag.record_eval(
 
 ---
 
+## IDE Proxy (anysql-proxy)
+
+[`proxy/`](proxy/) holds **anysql-proxy**, a local HTTP proxy that sits between an AI coding
+assistant (Cursor, Claude Code, Windsurf, VS Code with Continue, Zed) and the OpenAI or
+Anthropic API. It forwards each request unchanged, streams the response back, and logs
+tokens, cost, latency, IDE and file context to a local DuckDB file, with Parquet snapshots
+for other tools. API keys are stored encrypted. It is a separate package with its own
+dependencies; see [proxy/README.md](proxy/README.md).
+
+```bash
+pip install "anysql-proxy @ git+https://github.com/sadayamuthu/anySQL#subdirectory=proxy"
+anysql-proxy keys set anthropic sk-ant-...
+anysql-proxy start
+anysql-proxy setup claude-code
+```
+
+---
+
 ## Development
 
 ```bash
@@ -257,6 +275,11 @@ pip install -e ".[dev]"
 pytest tests/ -v --tb=short   # Run tests
 ruff check anysql/            # Lint
 ruff format --check anysql/   # Check formatting (ruff format anysql/ to fix)
+
+# Proxy
+pip install -e "proxy[dev]"
+(cd proxy && pytest tests/ -v --tb=short)
+ruff check proxy/ && ruff format --check proxy/
 ```
 
 ---
@@ -279,7 +302,8 @@ anySQL/
 │   └── tracers/
 │       ├── agent.py       # AgentTracer (manual tracing + LangChain-style hooks)
 │       └── rag.py         # RAGTracer (LangChain/LlamaIndex/dict)
-├── tests/                 # 94 pytest tests
+├── tests/                 # SDK tests (pytest)
+├── proxy/                 # anysql-proxy: local IDE LLM proxy (separate package)
 ├── examples/              # 3 runnable demos
 └── docs/
     └── QUERIES.md         # Canonical SQL query library

@@ -15,8 +15,8 @@ authors:
   - family-names: Sadayamuthu
     given-names: Karthikeyan
     orcid: "https://orcid.org/0009-0008-3539-6048"
-version: 0.2.0
-date-released: "2026-11-13"
+version: 0.3.0
+date-released: "2026-11-19"
 license: Apache-2.0
 repository-code: "https://github.com/sadayamuthu/anySQL"
 url: "https://anysql.org"
