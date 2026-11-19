@@ -8,8 +8,7 @@
 
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?style=flat-square)](https://github.com/sadayamuthu/anySQL/actions)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue?style=flat-square)](https://www.python.org/downloads/)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green?style=flat-square)](LICENSE)
-[![PyPI](https://img.shields.io/badge/PyPI-anysql--proxy-orange?style=flat-square)](https://pypi.org/project/anysql-proxy/)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green?style=flat-square)](../LICENSE)
 
 ---
 
@@ -30,7 +29,8 @@ Works with Cursor, Claude Code, Windsurf, VS Code (Continue), and Zed — no IDE
 ## Quick Start
 
 ```bash
-pip install anysql-proxy
+# Not yet on PyPI: install from the repository
+pip install "anysql-proxy @ git+https://github.com/sadayamuthu/anySQL#subdirectory=proxy"
 
 # Store your API key (encrypted at rest)
 anysql-proxy keys set openai sk-...
@@ -163,6 +163,6 @@ Apache 2.0
 
 **anySQL is an [OpenAstra](https://openastra.org) initiative**
 
-[anysql.org](https://anysql.org) · [PyPI](https://pypi.org/project/anysql-proxy/) · [GitHub](https://github.com/sadayamuthu/anySQL) · [Docs](https://docs.anysql.org)
+[anysql.org](https://anysql.org) · [GitHub](https://github.com/sadayamuthu/anySQL) · [Docs](https://docs.anysql.org)
 
 </div>

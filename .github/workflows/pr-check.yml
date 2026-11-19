@@ -26,6 +26,26 @@ jobs:
       - name: Run tests
         run: pytest tests/ -v --tb=short
 
+  proxy:
+    name: Proxy tests and lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: proxy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -e ".[dev]" "ruff==0.17.3"
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+      - name: Check lint
+        run: ruff check src/ tests/
+      - name: Check format
+        run: ruff format --check src/ tests/
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

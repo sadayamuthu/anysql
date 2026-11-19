@@ -12,6 +12,16 @@ updates:
     commit-message:
       prefix: deps
 
+  - package-ecosystem: pip
+    directory: /proxy
+    schedule:
+      interval: weekly
+    groups:
+      proxy:
+        patterns: ['*']
+    commit-message:
+      prefix: deps
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
