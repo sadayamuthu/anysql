@@ -19,10 +19,6 @@ date: 19 November 2026
 bibliography: paper.bib
 ---
 
-<!-- DRAFT. Not for submission before JOSS's six-month public-development gate is met
-     (target: May 2027). Update version, dates and the research-impact section before
-     submitting. -->
-
 # Summary
 
 anySQL is a Python library that records the telemetry of large language model (LLM)
@@ -114,26 +110,19 @@ sequence in anySQL 0.2.0 was added to make that analysis possible: it lets a que
 whether an identifier first seen in a tool output was later used in a state-changing call.
 The study's queries, loaders and results are public [@untraced_artifacts].
 
-<!-- TODO before submission: add any further use (other papers, preprints, external
-     users, issues or PRs from non-authors). -->
-
 # AI usage disclosure
 
-<!-- TODO: complete accurately before submission. JOSS requires: tool names and versions,
-     where they were used (code, tests, documentation, this paper), the scope of the
-     assistance, and confirmation of human review. Example wording below; edit to match
-     what actually happened. -->
-
 Generative AI tools were used in developing this software and in preparing this paper.
-Anthropic's Claude (via Claude Code; models: TODO) was used to assist with
-TODO: [e.g. implementation of adapters and tracers, writing tests, documentation, and
-drafting this manuscript]. The author defined the problem, the table schema, the join-key
-design and the cross-layer step sequence, and made all architectural decisions. All
-AI-generated code, tests, documentation and text were reviewed, modified where needed, and
-validated by the author, who takes full responsibility for the content.
+Anthropic's Claude Sonnet 4.6, through Claude Code, assisted with implementing the SDK and
+the proxy, with tests and with documentation. Claude Opus 5.5, through Claude Code,
+assisted with repository maintenance (lint fixes and CI configuration) and drafted this
+manuscript. The author defined the problem, the table schema, the join-key design and the
+cross-layer step sequence, and made all architectural decisions. The author reviewed,
+edited and validated all AI-generated code, tests, documentation and text, and takes full
+responsibility for the content.
 
 # Acknowledgements
 
-<!-- TODO: funding statement, or "This work received no external funding." -->
+This work received no external funding.
 
 # References
