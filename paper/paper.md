@@ -93,6 +93,11 @@ records to SQLite as JSON, and registers each table with DuckDB as a view. Valid
 happens when tables are materialised, so storage stays schema-tolerant while queries see
 typed columns.
 
+The repository also contains `anysql-proxy`, a separate package that runs as a local HTTP
+proxy between an AI coding assistant and the OpenAI or Anthropic API. It forwards
+requests unchanged and logs token counts, cost, latency and editor context to a local
+DuckDB file, so the use of coding assistants can be studied with the same SQL approach.
+
 The library is tested with pytest, including tests that check that model calls,
 retrievals and tool calls in one session share a single step sequence. It is released on
 PyPI as `anysql-sdk` under the Apache 2.0 licence, and archived on Zenodo
