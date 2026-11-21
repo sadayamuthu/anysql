@@ -12,7 +12,7 @@ harass, demean or exclude anyone.
 ## Reporting
 
 To report behaviour that breaks the code of conduct, email
-**<!-- TODO: conduct contact address -->**. Reports are read only by the
+**[sadayamuthu@outlook.com](mailto:sadayamuthu@outlook.com)**. Reports are read only by the
 maintainers listed in [MAINTAINERS.md](MAINTAINERS.md); if a report concerns
 one of them, that maintainer is left out of handling it.
 
