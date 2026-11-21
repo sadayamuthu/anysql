@@ -324,7 +324,7 @@ a docs site is the first item on the roadmap.
 
 ## Application contact name(s) and email(s)
 
-**TODO:** Karthikeyan Sadayamuthu, <your email>
+Karthikeyan Sadayamuthu, sadayamuthu@outlook.com
 
 ## Contributing or sponsoring entity signatory information
 
@@ -335,7 +335,7 @@ If an individual:
 
 | Name | Country | Email address |
 |------|---------|---------------|
-| Karthikeyan Sadayamuthu | United States | **TODO** |
+| Karthikeyan Sadayamuthu | United States | sadayamuthu@outlook.com |
 
 If OpenAstra signs, fill in the organization table instead: legal name,
 address, entity type (for example a Delaware corporation), signatory name and
